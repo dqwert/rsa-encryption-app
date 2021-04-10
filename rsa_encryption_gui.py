@@ -1,12 +1,7 @@
 import sys
-import threading
 
 from PyQt5 import QtWidgets
-import rsa
 from rsa_encryption import RSATool, PublicKeyInfo
-
-import PyQt5
-from PyQt5 import Qt, QtGui
 
 
 class DecryptionGroup(QtWidgets.QGroupBox):
@@ -74,16 +69,10 @@ class PublicKeyListControl(QtWidgets.QWidget):
 
         self.pub_key_list = QtWidgets.QListWidget()
 
-        self.copy_button = QtWidgets.QPushButton('copy')
+        self.add_button = QtWidgets.QPushButton('add')
         self.remove_button = QtWidgets.QPushButton('remove')
 
-        self.pub_key_input = QtWidgets.QTextEdit('Public key input')
-
-        self.add_button = QtWidgets.QPushButton('add')
-        self.remove_if_exist_button = QtWidgets.QPushButton('remove if exist')
-
         self.exist_keys_control = QtWidgets.QHBoxLayout()
-        self.new_key_control = QtWidgets.QHBoxLayout()
 
         self._setup_layout()
         self._setup_widgets()
@@ -95,20 +84,13 @@ class PublicKeyListControl(QtWidgets.QWidget):
         # setup pub_key_list
         self.layout.addWidget(self.pub_key_list)
         # setup exist_keys_control
-        # setup  copy_button
-        self.exist_keys_control.addWidget(self.copy_button)
+        # setup  add_button
+        self.exist_keys_control.addWidget(self.add_button)
         # setup  remove_button
         self.exist_keys_control.addWidget(self.remove_button)
+
         self.layout.addLayout(self.exist_keys_control)
-        # setup input
-        self.layout.addWidget(self.pub_key_input)
-        # setup new_key_control
-        # setup  add_button
-        self.new_key_control.addWidget(self.add_button)
-        # setup  remove_if_exist_button
-        self.new_key_control.addWidget(self.remove_if_exist_button)
-        self.layout.addLayout(self.new_key_control)
-        # setup
+        # setup layout
         self.setLayout(self.layout)
 
 
@@ -180,13 +162,13 @@ class RsaEncryptionGui:
     def __init__(self):
         self.rsa_tool = RSATool()
 
-        self.gui = QtWidgets.QApplication(sys.argv)
+        self.app = QtWidgets.QApplication(sys.argv)
         self.window = MainWindow()
 
         self._wire()
 
         self.window.show()
-        self.gui.exec_()
+        self.app.exec_()
 
     def _wire(self):
         self.window.decryption_group.keypair_bit_num.currentTextChanged.connect(lambda s: print(s))
@@ -196,7 +178,7 @@ class RsaEncryptionGui:
         self.window.decryption_group.decrypt.clicked.connect(self._decrypt)
 
         self.window.encryption_group.encryption_display.encrypt.clicked.connect(self._encrypt)
-        self.window.encryption_group.pub_key_control.copy_button.clicked.connect(self._copy_pub_key)
+        self.window.encryption_group.pub_key_control.remove_button.clicked.connect(self._remove_pub_key)
 
     def _gen_keypair(self):
         bit_num = int(self.window.decryption_group.keypair_bit_num.currentText())
@@ -216,6 +198,8 @@ class RsaEncryptionGui:
             self.window.decryption_group.decrypted.setText(decrypted)
         except FileNotFoundError:
             self.window.decryption_group.decrypted.setText('Empty keypair: no private key available')
+        except ValueError:
+            self.window.decryption_group.decrypted.setText('Invalid sequence')
 
     def _encrypt(self):
         msg = self.window.encryption_group.encryption_display.msg.toPlainText()
@@ -230,13 +214,21 @@ class RsaEncryptionGui:
 
     def _add_pub_key(self):
         public_key = bytearray.fromhex(self.window.encryption_group.pub_key_control.pub_key_input.toPlainText())
+        print(public_key)
+        self._update_pub_key_list()
+
+    def _remove_pub_key(self):
+        index_selected = self.window.encryption_group.pub_key_control.pub_key_list.currentIndex().row()
+        if index_selected == -1:
+            return
+        del self.rsa_tool.pub_keys_info[index_selected]
+        self._update_pub_key_list()
 
     def _copy_pub_key(self):
         index_selected = self.window.encryption_group.pub_key_control.pub_key_list.currentIndex().row()
         if index_selected == -1:
             return
-        # self.clipboard.setText(self.rsa_tool.pub_keys_info[index_selected].name, Qt.QClipboard.Clipboard)
-        # PyQt5.setText(self.rsa_tool.pub_keys_info[index_selected].name, Qt.QClipboard.Clipboard)
+        self.app.clipboard().setText(self.rsa_tool.pub_keys_info[index_selected].name)
 
 
 if __name__ == '__main__':
